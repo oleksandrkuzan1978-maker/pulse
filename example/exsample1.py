@@ -1,9 +1,13 @@
+"""Продемонстрировать проверку JSON-данных пользователя средствами Pydantic."""
+
 from typing import Annotated
 import json
 from pydantic import (BaseModel, EmailStr, ValidationError, Field, ConfigDict, field_validator, model_validator)
 from json_text_tests import tests
 
 class Address(BaseModel):
+    """Адрес с проверкой длины строк и положительного номера дома."""
+
     model_config = ConfigDict(str_strip_whitespace=True,
                               str_min_length=2, )
     city: Annotated[str, Field(description="Name of the city")]
@@ -12,6 +16,8 @@ class Address(BaseModel):
 
 
 class User(BaseModel):
+    """Пользователь с проверкой имени, адреса, почты и возраста занятости."""
+
     model_config = ConfigDict(str_strip_whitespace=True
                               , str_min_length=2, )
     name: Annotated[str, Field(description="Name of user")]
@@ -23,18 +29,49 @@ class User(BaseModel):
     @field_validator("name")
     @classmethod
     def name_only_letters(cls, value: str) -> str:
+        """Проверить, что имя состоит из букв и обычных пробелов.
+
+        Args:
+            value: Проверяемое имя пользователя.
+
+        Returns:
+            Исходное имя, если проверка пройдена.
+
+        Raises:
+            ValueError: После удаления пробелов имя пустое или содержит не только буквы.
+        """
         if not value.replace(" ", "").isalpha():
             raise ValueError("Name must contain only letters")
         return value
 
     @model_validator(mode="after")
     def check_employment_age(self):
+        """Проверить возраст работающего пользователя.
+
+        Returns:
+            Текущий экземпляр пользователя.
+
+        Raises:
+            ValueError: Пользователь работает, но его возраст вне диапазона 18–65 лет.
+        """
         if self.is_employed and not 18 <= self.age <= 65:
             raise ValueError("Employed user must be between 18 and 65 years old")
         return self
 
 
 def register_user(data: str | dict) -> str:
+    """Проверить JSON пользователя и вернуть отформатированный JSON.
+
+    Args:
+        data: JSON-строка. Несмотря на аннотацию, словарь не поддерживается
+            используемым здесь методом model_validate_json.
+
+    Returns:
+        JSON-строка проверенных данных с отступом в четыре пробела.
+
+    Raises:
+        ValidationError: Входные данные не соответствуют формату JSON или модели.
+    """
     user = User.model_validate_json(data)
     #user = User.model_validate(data)
     #print(user)
@@ -42,6 +79,19 @@ def register_user(data: str | dict) -> str:
 
 
 def load_tests(file_name: str):
+    """Прочитать тестовые данные из JSON-файла в кодировке UTF-8.
+
+    Args:
+        file_name: Путь к JSON-файлу.
+
+    Returns:
+        Декодированное содержимое JSON либо None, если файл не найден.
+        При отсутствии файла сообщение об ошибке выводится в консоль.
+
+    Raises:
+        json.JSONDecodeError: Файл содержит некорректный JSON.
+        OSError: Файл невозможно прочитать по причине, отличной от его отсутствия.
+    """
     try:
 
         with open(file_name, 'r', encoding='utf-8') as f:

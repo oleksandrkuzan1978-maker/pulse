@@ -1,13 +1,23 @@
+"""Продемонстрировать связь товаров и категорий в SQLAlchemy.
+
+При выполнении или импорте модуль создаёт базу SQLite в памяти,
+сохраняет демонстрационные записи и выводит их в консоль.
+"""
+
 from decimal import Decimal
 from sqlalchemy import create_engine, String, Numeric, ForeignKey
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.orm import relationship
 
 class Base(DeclarativeBase):
+    """Базовый класс декларативных моделей демонстрационного примера."""
+
     pass
 
 
 class Product(Base):
+    """Товар с названием, ценой, признаком наличия и связанной категорией."""
+
     __tablename__ = 'products'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -18,14 +28,18 @@ class Product(Base):
     category: Mapped['Category'] = relationship(back_populates='products')
 
     def __str__(self) -> str:
+        """Вернуть описание товара, его цены, наличия и идентификатора категории."""
         return (f'Product: name: {self.name}; price: {self.price};'
                 f' availability: {self.in_stock}; category_id: {self.category_id}')
     def __repr__(self) -> str:
+        """Вернуть диагностическое строковое представление товара."""
         return (f'Product: name: {self.name}; price: {self.price};'
                 f' availability: {self.in_stock}; category_id: {self.category_id}')
 
 
 class Category(Base):
+    """Категория с названием, описанием и коллекцией товаров."""
+
     __tablename__ = 'categories'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -34,9 +48,11 @@ class Category(Base):
     products: Mapped[list[Product]] = relationship(back_populates='category')
 
     def __str__(self) -> str:
+        """Вернуть название и описание категории."""
         return f'Category: {self.name}; {self.description}'
 
     def __repr__(self) -> str:
+        """Вернуть диагностическое строковое представление категории."""
         return f'Category: {self.name}; {self.description}'
 
 

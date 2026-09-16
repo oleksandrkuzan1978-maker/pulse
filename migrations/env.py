@@ -1,3 +1,5 @@
+"""Настроить контекст Alembic из текущего приложения Flask и запустить миграции."""
+
 import logging
 from logging.config import fileConfig
 
@@ -16,6 +18,7 @@ logger = logging.getLogger('alembic.env')
 
 
 def get_engine():
+    """Вернуть движок базы данных с учётом версии Flask-SQLAlchemy."""
     try:
         # this works with Flask-SQLAlchemy<3 and Alchemical
         return current_app.extensions['migrate'].db.get_engine()
@@ -25,6 +28,7 @@ def get_engine():
 
 
 def get_engine_url():
+    """Вернуть URL движка с паролем и экранированными для Alembic знаками процента."""
     try:
         return get_engine().url.render_as_string(hide_password=False).replace(
             '%', '%%')
@@ -46,23 +50,14 @@ target_db = current_app.extensions['migrate'].db
 
 
 def get_metadata():
+    """Вернуть метаданные основной базы данных расширения SQLAlchemy."""
     if hasattr(target_db, 'metadatas'):
         return target_db.metadatas[None]
     return target_db.metadata
 
 
 def run_migrations_offline():
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
+    """Сформировать SQL миграций без подключения к базе данных."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url, target_metadata=get_metadata(), literal_binds=True
@@ -73,17 +68,19 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
+    """Выполнить миграции через соединение с базой данных приложения."""
 
     # this callback is used to prevent an auto-migration from being generated
     # when there are no changes to the schema
     # reference: http://alembic.zzzcomputing.com/en/latest/cookbook.html
     def process_revision_directives(context, revision, directives):
+        """Исключить пустую автоматически сгенерированную ревизию.
+
+        Args:
+            context: Контекст миграции Alembic.
+            revision: Текущая ревизия, передаваемая Alembic.
+            directives: Изменяемый список директив; очищается при отсутствии изменений.
+        """
         if getattr(config.cmd_opts, 'autogenerate', False):
             script = directives[0]
             if script.upgrade_ops.is_empty():
