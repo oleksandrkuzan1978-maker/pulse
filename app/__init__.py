@@ -1,8 +1,6 @@
 import os
 
 from flask import Flask
-from app.models import Migrate
-from app.models import db
 
 
 CONFIG_MAP = {
@@ -20,7 +18,5 @@ def create_app(config_object=None):
         config_object = CONFIG_MAP[mode]
 
     app.config.from_object(config_object)
-    db.init_app(app)
-    migrate = Migrate()
-    migrate.init_app(app, db)
+
     return app
