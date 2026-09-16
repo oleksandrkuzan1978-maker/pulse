@@ -1,14 +1,14 @@
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import sessionmaker, DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.orm import relationship
 from app.models import db
-from app.models.questions import Question
 
 
 class Answer(db.Model):
     __tablename__ = 'answers'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    is_agree: Mapped[bool]
-    question_id: Mapped[int] = mapped_column(ForeignKey('questions.id'))
-    question: Mapped[Question] = relationship(back_populates='answers')
+    id: db.Mapped[int] = db.mapped_column(primary_key=True)
+    question_id: db.Mapped[int] = db.mapped_column(db.ForeignKey('questions.id'))
+    is_agree: db.Mapped[bool]
+
+    question: db.Mapped["Question"] = db.relationship(back_populates="answers")
+
+    def __repr__(self):
+        return f"<Answer {self.id}: question={self.question_id}, is_agree={self.is_agree}>"

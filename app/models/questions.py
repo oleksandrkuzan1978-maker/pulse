@@ -1,13 +1,15 @@
-from sqlalchemy.orm import sessionmaker, DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.orm import relationship
 from app.models import db
 
 
 class Question(db.Model):
     __tablename__ = 'questions'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    text: Mapped[str] = mapped_column(db.String(255))
-    answers: Mapped[list['Answer']] = relationship(back_populates='question')
+    id: db.Mapped[int] = db.mapped_column(primary_key=True)
+    text: db.Mapped[str] = db.mapped_column(db.String(255))
 
+    responses: db.Mapped[list["Answer"]] = db.relationship(
+        back_populates="question", cascade="all, delete-orphan"
+    )
 
+    def __repr__(self):
+        return f"<Question {self.id}: {self.text}>"

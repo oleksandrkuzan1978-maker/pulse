@@ -1,7 +1,8 @@
 import os
 
 from flask import Flask
-
+from flask_migrate import Migrate
+from app.models import db
 
 CONFIG_MAP = {
     'development': 'config.DevelopmentConfig',
@@ -9,6 +10,7 @@ CONFIG_MAP = {
     'production': 'config.ProductionConfig',
 }
 
+migrate = Migrate()
 
 def create_app(config_object=None):
     app = Flask(__name__)
@@ -18,5 +20,7 @@ def create_app(config_object=None):
         config_object = CONFIG_MAP[mode]
 
     app.config.from_object(config_object)
+    db.init_app(app)
+    migrate.init_app(app, db)
 
     return app
