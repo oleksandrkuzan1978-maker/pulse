@@ -1,11 +1,10 @@
-"""Предоставить фабрику приложения и настроить расширения базы данных."""
+"""Предоставить фабрику Flask с расширениями базы данных и маршрутами вопросов."""
 
 import os
-
 from flask import Flask
 from flask_migrate import Migrate
 from app.models import db
-
+from app.routers import questions_bp
 CONFIG_MAP = {
     'development': 'config.DevelopmentConfig',
     'testing': 'config.TestingConfig',
@@ -15,7 +14,7 @@ CONFIG_MAP = {
 migrate = Migrate()
 
 def create_app(config_object=None):
-    """Создать приложение Flask и подключить SQLAlchemy и Flask-Migrate.
+    """Создать приложение, подключить расширения и маршруты вопросов.
 
     Args:
         config_object: Объект конфигурации или строка с путём импорта.
@@ -23,7 +22,7 @@ def create_app(config_object=None):
             значение по умолчанию — development.
 
     Returns:
-        Настроенный экземпляр Flask.
+        Экземпляр Flask с SQLAlchemy, Flask-Migrate и Blueprint вопросов.
 
     Raises:
         KeyError: Значение APP_ENV отсутствует в CONFIG_MAP.
@@ -37,5 +36,5 @@ def create_app(config_object=None):
     app.config.from_object(config_object)
     db.init_app(app)
     migrate.init_app(app, db)
-
+    app.register_blueprint(questions_bp)
     return app
