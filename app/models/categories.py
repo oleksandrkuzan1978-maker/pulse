@@ -16,7 +16,8 @@ class Category(db.Model):
 
     id: db.Mapped[int] = db.mapped_column(primary_key=True, autoincrement=True)
     name: db.Mapped[str] = db.mapped_column(nullable=False)
-    questions: db.Mapped[list['Question']] = db.relationship(back_populates="category")
+    questions: db.Mapped[list['Question']] = db.relationship(back_populates="category"
+                                                             , cascade="all, delete-orphan")
 
     @validates("name")
     def validate_name(self, key, name):

@@ -7,6 +7,7 @@ Blueprint использует префикс /questions. Входные дан�
 
 from flask import Blueprint, jsonify, request
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from app.models import Question, Category, db
 from app.schemas.questions import QuestionRead, QuestionCreate, QuestionsList, QuestionUpdate
 from pydantic import ValidationError
@@ -28,6 +29,8 @@ def _get_question_or_404(question_id: int):
         return None, (jsonify({"error": f"Question with id={question_id} not found"}), 404,)
     return question, None
 
+
+
 @questions_bp.route('', methods=['GET'])
 def get_questions():
     """Вернуть все вопросы в ответ на GET /questions.
@@ -39,7 +42,7 @@ def get_questions():
     Raises:
         ValidationError: Данные из базы не соответствуют схеме QuestionRead.
     """
-    questions = db.session.scalars(select(Question))
+    questions = db.session.scalars(select(Question).options(joinedload(Question.category)))
     result = QuestionsList.dump_python(QuestionsList.validate_python(questions))
     return jsonify(result), 200
 

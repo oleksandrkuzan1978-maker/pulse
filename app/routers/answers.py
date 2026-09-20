@@ -38,7 +38,7 @@ def create_answer(question_id: int):
     if question is None:
         return error
 
-    payload = request.get_json()
+    payload = request.get_json(silent=True)
     if payload is None:
         return error_message(f'Payload is empty', 400)
 

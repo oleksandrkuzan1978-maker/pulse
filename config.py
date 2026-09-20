@@ -25,6 +25,7 @@ class TestingConfig(Config):
     """Настройки приложения с включённым режимом тестирования."""
 
     TESTING = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
 
 
 class ProductionConfig(Config):

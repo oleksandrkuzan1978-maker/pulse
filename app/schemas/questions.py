@@ -9,15 +9,35 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter, computed_field
 
 
-QuestionText = Annotated[
+QCText = Annotated[
     str,
     StringConstraints(
         strip_whitespace=True,
         min_length=1,
         max_length=255,
     ),
-    Field(description="Text of the question"),
+    Field(description="Text of the question or its category"),
 ]
+CategoryID = Annotated[int, Field(strict=True, gt=0)]
+
+
+class CategoryBase(BaseModel):
+    name: QCText
+
+
+class CategoryCreate(CategoryBase):
+    pass
+
+
+class CategoryRead(CategoryBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: CategoryID
+
+
+class CategoryUpdate(CategoryBase):
+    model_config = ConfigDict(extra="forbid")
+    name: QCText
+
 
 
 class QuestionBase(BaseModel):
@@ -28,14 +48,15 @@ class QuestionBase(BaseModel):
             окружающих пробелов.
     """
 
-    text: QuestionText
+    text: QCText
+
 
 class QuestionCreate(QuestionBase):
     """Данные создания вопроса с обязательным текстом.
 
     Наследует поле text из QuestionBase. Поле категории в схеме не определено.
     """
-    category_id: Annotated[int, Field(strict=True, gt=0)]
+    category_id: CategoryID
 
 
 class QuestionRead(QuestionBase):
@@ -48,7 +69,8 @@ class QuestionRead(QuestionBase):
 
     model_config = ConfigDict(from_attributes=True)
     id: int
-    category_id: int
+    category: CategoryRead
+
 
 class QuestionUpdate(QuestionBase):
     """Данные изменения вопроса с обязательным текстом.
@@ -57,7 +79,7 @@ class QuestionUpdate(QuestionBase):
     не проходят проверку, в том числе при использовании схемы для PATCH.
     """
     model_config = ConfigDict(extra="forbid")
-    text: QuestionText
+    text: QCText
 
 
 class QuestionResult(BaseModel):
@@ -80,3 +102,4 @@ class QuestionResult(BaseModel):
 
 
 QuestionsList = TypeAdapter(list[QuestionRead])
+CategoriesList = TypeAdapter(list[CategoryRead])
