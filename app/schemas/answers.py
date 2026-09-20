@@ -6,28 +6,13 @@ AnswersList сериализует списки ответов. AnswerText и An
 """
 
 from typing import Annotated
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
-
-AnswerText = Annotated[
-    str,
-    StringConstraints(
-        strip_whitespace=True,
-        min_length=1,
-        max_length=255,
-    ),
-    Field(description="Text of the question"),
-]
-
-AnswerId = Annotated[
-    int,
-    Field(description="ID of the question"),
-]
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 
 class AnswerBase(BaseModel):
     """Базовая схема ответа без общих полей."""
-
     pass
+
 
 class AnswerCreate(AnswerBase):
     """Обязательное строгое булево is_agree; ID вопроса передаётся в URL."""
@@ -39,7 +24,7 @@ class AnswerRead(AnswerBase):
     """ID ответа, признак согласия и ID вопроса, включая чтение из ORM."""
     model_config = ConfigDict(from_attributes=True)
     id: int
-    is_agree: bool
+    is_agree: Annotated[bool, Field(strict=True)]
     question_id: int
 
 class AnswerUpdate(AnswerBase):

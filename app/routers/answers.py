@@ -3,13 +3,8 @@ from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 from sqlalchemy import func
 from app.models import db, Answer, Question
-from app.schemas.answers import (
-    AnswerRead,
-    AnswerCreate, AnswerBase, AnswersList
-)
-from app.schemas.questions import (
-    QuestionResult
-)
+from app.schemas.answers import (AnswerRead, AnswerCreate, AnswersList)
+from app.schemas.questions import QuestionResult
 from app.schemas.errors import error_message, validation_error_response
 from .utils import _get_object_or_404
 
@@ -18,7 +13,6 @@ answers_bp = Blueprint(
     __name__,
     url_prefix="/questions/<int:question_id>",
 )
-
 
 
 @answers_bp.route("/answers", methods=["GET"])

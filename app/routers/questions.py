@@ -12,7 +12,6 @@ from app.models import Question, Category, db
 from app.schemas.questions import QuestionRead, QuestionCreate, QuestionsList, QuestionUpdate
 from pydantic import ValidationError
 
-
 questions_bp = Blueprint('questions', __name__, url_prefix='/questions')
 
 
@@ -29,7 +28,6 @@ def _get_question_or_404(question_id: int):
     if question is None:
         return None, (jsonify({"error": f"Question with id={question_id} not found"}), 404,)
     return question, None
-
 
 
 @questions_bp.route('', methods=['GET'])
@@ -57,10 +55,10 @@ def create_question():
     # Flask берёт тело HTTP-запроса и пытается превратить JSON в Python-объект
     payload = request.get_json(silent=True)
     if payload is None:
-        return jsonify({"error": "Invalid or missing LSON body"}), 400
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
     try:
         # Проверяем данные через Pydantic.
-        #Cоответствует ли полученный словарь схеме QuestionCreate?
+        # Cоответствует ли полученный словарь схеме QuestionCreate?
         question_in = QuestionCreate.model_validate(payload)
     except ValidationError as exc:
         return jsonify({"errors": "Validation error",
@@ -98,7 +96,7 @@ def delete_question(question_id: int):
 
     db.session.delete(question)
     db.session.commit()
-    return  "", 204
+    return "", 204
 
 
 @questions_bp.route('/<int:question_id>', methods=['PUT', 'PATCH'])
@@ -125,7 +123,7 @@ def update_question(question_id: int):
         question_in = QuestionUpdate.model_validate(payload)
     except ValidationError as exc:
         return jsonify({'errors': "Validation error",
-                        "details": exc.errors(),}), 422
+                        "details": exc.errors(), }), 422
     question.text = question_in.text
     db.session.commit()
     return jsonify(QuestionRead.model_validate(question).model_dump()), 200

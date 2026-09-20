@@ -6,18 +6,20 @@ CategoryID требует положительный int без преобраз
 """
 
 from typing import Annotated
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter, computed_field
-
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, computed_field
+from typing import Annotated
+from pydantic import Field, StringConstraints
 
 QCText = Annotated[
-    str,
-    StringConstraints(
-        strip_whitespace=True,
-        min_length=1,
-        max_length=255,
-    ),
-    Field(description="Text of the question or its category"),
-]
+        str,
+        StringConstraints(
+            strip_whitespace=True,
+            min_length=1,
+            max_length=255,
+        ),
+        Field(description=f"Text of the question or its category"),
+    ]
+
 CategoryID = Annotated[int, Field(strict=True, gt=0)]
 
 
@@ -41,7 +43,6 @@ class CategoryUpdate(CategoryBase):
     """Обязательное новое название категории; дополнительные поля запрещены."""
     model_config = ConfigDict(extra="forbid")
     name: QCText
-
 
 
 class QuestionBase(BaseModel):
@@ -96,7 +97,6 @@ class QuestionResult(BaseModel):
     def total(self) -> int:
         """Вернуть сумму согласий и несогласий."""
         return self.agree_count + self.disagree_count
-
 
     @computed_field
     @property

@@ -1,6 +1,5 @@
 """Предоставить общий поиск ORM-объекта с JSON-ответом при его отсутствии."""
 from app.models import db
-from app.models import Question, Answer
 from app.schemas.errors import error_message
 
 def _get_object_or_404(model, pk):
