@@ -1,7 +1,7 @@
-"""Объединить две ветви истории миграций без изменения схемы.
+"""Сохранить идентификатор прежнего слияния в линейной истории.
 
 Revision ID: ed89d0988d09
-Revises: d7ac53a809c1, f7f26ce384b9
+Revises: d7ac53a809c1
 Create Date: 2026-09-16 15:04:34.530409
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'ed89d0988d09'
-down_revision = ('d7ac53a809c1', 'f7f26ce384b9')
+down_revision = 'd7ac53a809c1'
 branch_labels = None
 depends_on = None
 

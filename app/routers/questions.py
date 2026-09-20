@@ -7,9 +7,11 @@ Blueprint использует префикс /questions. Входные дан�
 
 from flask import Blueprint, jsonify, request
 from sqlalchemy import select
-from app.models import Question, db
+from app.models import Question, Category, db
 from app.schemas.questions import QuestionRead, QuestionCreate, QuestionsList, QuestionUpdate
 from pydantic import ValidationError
+
+
 questions_bp = Blueprint('questions', __name__, url_prefix='/questions')
 
 
@@ -20,6 +22,11 @@ questions_bp = Blueprint('questions', __name__, url_prefix='/questions')
 #     result = [QuestionRead.model_validate(q).model_dump() for q in questions]
 #     return jsonify(result), 200
 
+def _get_question_or_404(question_id: int):
+    question = db.session.get(Question, question_id)
+    if question is None:
+        return None, (jsonify({"error": f"Question with id={question_id} not found"}), 404,)
+    return question, None
 
 @questions_bp.route('', methods=['GET'])
 def get_questions():
@@ -55,22 +62,36 @@ def create_question():
             в частности обязательность category_id при отсутствии значения.
         ValidationError: Сохранённый вопрос не соответствует схеме чтения.
     """
+    # Flask берёт тело HTTP-запроса и пытается превратить JSON в Python-объект
+    payload = request.get_json(silent=True)
+    if payload is None:
+        return jsonify({"error": "Invalid or missing LSON body"}), 400
     try:
-        #Flask берёт тело HTTP-запроса и пытается превратить JSON в Python-объект
-        data = request.get_json(silent=True)
         # Проверяем данные через Pydantic.
         #Cоответствует ли полученный словарь схеме QuestionCreate?
-        question = QuestionCreate.model_validate(data)
-    except ValidationError as e:
-        return jsonify({"errors":e.errors()}), 422
-    question = Question(text=question.text)
+        question_in = QuestionCreate.model_validate(payload)
+    except ValidationError as exc:
+        return jsonify({"errors": "Validation error",
+                        "messages": exc.errors()}), 422
+
+    category = db.session.get(Category, question_in.category_id)
+
+    if category is None:
+        return jsonify({
+            "error": "Category not found",
+            "category_id": question_in.category_id
+        }), 404
+
+    question = Question(text=question_in.text,
+                        category_id=question_in.category_id)
+
     db.session.add(question)
     db.session.commit()
     return jsonify(QuestionRead.model_validate(question).model_dump()), 201
 
 
-@questions_bp.route('/<int:id>', methods=['DELETE'])
-def delete_question(id):
+@questions_bp.route('/<int:question_id>', methods=['DELETE'])
+def delete_question(question_id: int):
     """Удалить вопрос по идентификатору и сохранить изменения.
 
     Args:
@@ -82,16 +103,17 @@ def delete_question(id):
 
     Связанные ответы удаляются согласно каскадным настройкам модели Question.
     """
-    question = db.session.get(Question, id)
-    if not question:
-        return jsonify({"errors": "Question not found"}), 404
+    question, error = _get_question_or_404(question_id)
+    if error:
+        return error
+
     db.session.delete(question)
     db.session.commit()
     return  "", 204
 
 
-@questions_bp.route('/<int:id>', methods=['PUT', 'PATCH'])
-def update_question(id):
+@questions_bp.route('/<int:question_id>', methods=['PUT', 'PATCH'])
+def update_question(question_id: int):
     """Изменить текст вопроса по запросу PUT или PATCH.
 
     Оба метода требуют поле text. Отсутствующее или некорректное JSON-тело
@@ -107,21 +129,24 @@ def update_question(id):
     Raises:
         ValidationError: Сохранённый вопрос не соответствует схеме чтения.
     """
-    question = db.session.get(Question, id)
-    if not question:
-        return jsonify({"errors": "Question not found"}), 404
-    payload = request.get_json(silent=True) or {}
+    question, error = _get_question_or_404(question_id)
+    if error:
+        return error
+    payload = request.get_json(silent=True)
+    if payload is None:
+        return jsonify({"error": "Invalid or mossing JSON body"}), 400
     try:
-        q = QuestionUpdate.model_validate(payload)
-    except ValidationError as e:
-        return jsonify({'errors': e.errors()}), 422
-    question.text = q.text
+        question_in = QuestionUpdate.model_validate(payload)
+    except ValidationError as exc:
+        return jsonify({'errors': "Validation error",
+                        "details": exc.errors(),}), 422
+    question.text = question_in.text
     db.session.commit()
     return jsonify(QuestionRead.model_validate(question).model_dump()), 200
 
 
-@questions_bp.route('/<int:id>', methods=['GET'])
-def get_question(id):
+@questions_bp.route('/<int:question_id>', methods=['GET'])
+def get_question(question_id: int):
     """Вернуть вопрос по идентификатору в ответ на GET /questions/<id>.
 
     Args:
@@ -134,7 +159,8 @@ def get_question(id):
     Raises:
         ValidationError: Данные вопроса не соответствуют схеме QuestionRead.
     """
-    question = db.session.get(Question, id)
-    if not question:
-        return  jsonify({"errors":"Question not found"}), 404
+    question, error = _get_question_or_404(question_id)
+    if error:
+        return error
+
     return jsonify(QuestionRead.model_validate(question).model_dump()), 200

@@ -18,15 +18,34 @@ depends_on = None
 
 def upgrade():
 
-    """Создать categories и добавить обязательный category_id без заполнения старых строк."""
+    """Создать категории, заполнить старые вопросы и установить ограничения."""
     op.create_table('categories',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
-    with op.batch_alter_table('questions', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('category_id', sa.Integer(), nullable=False))
-        batch_op.create_foreign_key('fk_questions_category_id', 'categories', ['category_id'], ['id'])
+    with op.batch_alter_table('questions') as batch_op:
+        batch_op.add_column(sa.Column('category_id', sa.Integer(), nullable=True))
+
+    connection = op.get_bind()
+    categories = sa.table(
+        'categories',
+        sa.column('id', sa.Integer()),
+        sa.column('name', sa.String()),
+    )
+    # Новая таблица пуста: создаём общую категорию для прежних вопросов.
+    connection.execute(categories.insert().values(name='General'))
+    category_id = connection.execute(sa.select(categories.c.id)).scalar_one()
+    connection.execute(
+        sa.text('UPDATE questions SET category_id = :id WHERE category_id IS NULL'),
+        {'id': category_id},
+    )
+
+    with op.batch_alter_table('questions') as batch_op:
+        batch_op.alter_column('category_id', existing_type=sa.Integer(), nullable=False)
+        batch_op.create_foreign_key(
+            'fk_questions_category_id', 'categories', ['category_id'], ['id']
+        )
 
 
 def downgrade():

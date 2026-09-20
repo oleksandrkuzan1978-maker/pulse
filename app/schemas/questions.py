@@ -6,7 +6,7 @@ QuestionText удаляет окружающие пробелы и ограни�
 """
 
 from typing import Annotated
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter, computed_field
 
 
 QuestionText = Annotated[
@@ -17,11 +17,6 @@ QuestionText = Annotated[
         max_length=255,
     ),
     Field(description="Text of the question"),
-]
-
-QuestionId = Annotated[
-    int,
-    Field(description="ID of the question"),
 ]
 
 
@@ -40,8 +35,7 @@ class QuestionCreate(QuestionBase):
 
     Наследует поле text из QuestionBase. Поле категории в схеме не определено.
     """
-
-    pass
+    category_id: Annotated[int, Field(strict=True, gt=0)]
 
 
 class QuestionRead(QuestionBase):
@@ -53,7 +47,8 @@ class QuestionRead(QuestionBase):
     """
 
     model_config = ConfigDict(from_attributes=True)
-    id: QuestionId
+    id: int
+    category_id: int
 
 class QuestionUpdate(QuestionBase):
     """Данные изменения вопроса с обязательным текстом.
@@ -61,8 +56,27 @@ class QuestionUpdate(QuestionBase):
     Наследует обязательное поле text из QuestionBase. Пустые данные
     не проходят проверку, в том числе при использовании схемы для PATCH.
     """
+    model_config = ConfigDict(extra="forbid")
+    text: QuestionText
 
-    pass
-    #id: QuestionId
+
+class QuestionResult(BaseModel):
+    question_id: int
+    agree_count: int
+    disagree_count: int
+
+    @computed_field
+    @property
+    def total(self) -> int:
+        return self.agree_count + self.disagree_count
+
+
+    @computed_field
+    @property
+    def is_agree_percentage(self) -> float:
+        if not self.total:
+            return 0.0
+        return round(self.agree_count / self.total * 100, 2)
+
 
 QuestionsList = TypeAdapter(list[QuestionRead])
