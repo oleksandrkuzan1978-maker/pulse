@@ -1,8 +1,7 @@
 """Обработать создание, чтение списка, переименование и удаление категорий."""
 from flask import Blueprint, jsonify, request
-from sqlalchemy import select
-from app.models import Question, Category, db
-from app.schemas.questions import CategoryBase, CategoryCreate, CategoryRead, CategoryUpdate, CategoriesList
+from app.models import Category, db
+from app.schemas.questions import CategoryCreate, CategoryRead, CategoryUpdate, CategoriesList
 from pydantic import ValidationError
 
 
