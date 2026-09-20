@@ -17,7 +17,7 @@ QCText = Annotated[
             min_length=1,
             max_length=255,
         ),
-        Field(description=f"Text of the question or its category",)
+        Field(description="Text of the question or its category")
     ]
 
 CategoryID = Annotated[int, Field(strict=True, gt=0)]
