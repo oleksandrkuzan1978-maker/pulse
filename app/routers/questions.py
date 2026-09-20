@@ -24,6 +24,7 @@ questions_bp = Blueprint('questions', __name__, url_prefix='/questions')
 #     return jsonify(result), 200
 
 def _get_question_or_404(question_id: int):
+    """Вернуть (Question, None) либо (None, кортеж JSON-ответа с кодом 404)."""
     question = db.session.get(Question, question_id)
     if question is None:
         return None, (jsonify({"error": f"Question with id={question_id} not found"}), 404,)
@@ -33,14 +34,10 @@ def _get_question_or_404(question_id: int):
 
 @questions_bp.route('', methods=['GET'])
 def get_questions():
-    """Вернуть все вопросы в ответ на GET /questions.
+    """Вернуть JSON-список вопросов с вложенными категориями и статусом 200.
 
-    Returns:
-        Кортеж из JSON-ответа со списком вопросов и HTTP-статуса 200.
-        При отсутствии вопросов список пуст.
-
-    Raises:
-        ValidationError: Данные из базы не соответствуют схеме QuestionRead.
+    Категории загружаются вместе с вопросами через joinedload. Пустая база
+    даёт пустой список. ORM-объекты проверяются схемой QuestionRead.
     """
     questions = db.session.scalars(select(Question).options(joinedload(Question.category)))
     result = QuestionsList.dump_python(QuestionsList.validate_python(questions))
@@ -49,21 +46,13 @@ def get_questions():
 
 @questions_bp.route('', methods=['POST'])
 def create_question():
-    """Проверить JSON запроса и сохранить новый вопрос.
+    """Создать вопрос по text и ID существующей категории из POST /questions.
 
-    Текст берётся из тела POST /questions и проверяется схемой QuestionCreate.
-    Текущая реализация создаёт Question только с текстом, без category_id.
-
-    Returns:
-        Кортеж из JSON-ответа с созданным вопросом и HTTP-статуса 201
-        либо JSON-ответа с ошибками входных данных и статуса 422.
-
-    Raises:
-        BadRequest: Тело запроса содержит некорректный JSON.
-        UnsupportedMediaType: Тип содержимого запроса не соответствует JSON.
-        sqlalchemy.exc.IntegrityError: Сохранение нарушает ограничения базы,
-            в частности обязательность category_id при отсутствии значения.
-        ValidationError: Сохранённый вопрос не соответствует схеме чтения.
+    Возвращает JSON вопроса с вложенной категорией и статус 201.
+    Некорректное или отсутствующее JSON-тело, включая null и неверный
+    Content-Type, даёт 400; нарушение схемы — 422; неизвестная категория — 404.
+    Новая категория здесь не создаётся. Ошибки БД при commit и ошибки
+    валидации представления сохранённого вопроса не перехватываются.
     """
     # Flask берёт тело HTTP-запроса и пытается превратить JSON в Python-объект
     payload = request.get_json(silent=True)
@@ -95,16 +84,13 @@ def create_question():
 
 @questions_bp.route('/<int:question_id>', methods=['DELETE'])
 def delete_question(question_id: int):
-    """Удалить вопрос по идентификатору и сохранить изменения.
+    """Удалить вопрос и связанные ответы через ORM-каскад.
 
     Args:
-        id: Идентификатор вопроса из URL DELETE /questions/<id>.
+        question_id: Идентификатор вопроса из URL.
 
     Returns:
-        Кортеж из пустой строки и HTTP-статуса 204 при удалении
-        либо JSON-ответа с ошибкой и статуса 404, если вопрос не найден.
-
-    Связанные ответы удаляются согласно каскадным настройкам модели Question.
+        Пустое тело и статус 204 либо JSON ошибки со статусом 404.
     """
     question, error = _get_question_or_404(question_id)
     if error:
@@ -117,20 +103,17 @@ def delete_question(question_id: int):
 
 @questions_bp.route('/<int:question_id>', methods=['PUT', 'PATCH'])
 def update_question(question_id: int):
-    """Изменить текст вопроса по запросу PUT или PATCH.
+    """Изменить только текст существующего вопроса через PUT или PATCH.
 
-    Оба метода требуют поле text. Отсутствующее или некорректное JSON-тело
-    преобразуется в пустой словарь и не проходит проверку обязательного текста.
+    Оба метода требуют непустой text; null и дополнительные поля запрещены.
+    Сначала проверяется наличие вопроса. Ответы: 404 при его отсутствии,
+    400 при неразобранном JSON-теле или null, 422 при нарушении схемы,
+    200 с вопросом и вложенной категорией после сохранения.
 
     Args:
-        id: Идентификатор вопроса из URL.
+        question_id: Идентификатор обновляемого вопроса.
 
-    Returns:
-        Кортеж из JSON-ответа и HTTP-статуса: 200 с обновлённым вопросом,
-        404 при отсутствии вопроса или 422 при ошибке входных данных.
-
-    Raises:
-        ValidationError: Сохранённый вопрос не соответствует схеме чтения.
+    Ошибки БД при commit не перехватываются.
     """
     question, error = _get_question_or_404(question_id)
     if error:
@@ -150,17 +133,12 @@ def update_question(question_id: int):
 
 @questions_bp.route('/<int:question_id>', methods=['GET'])
 def get_question(question_id: int):
-    """Вернуть вопрос по идентификатору в ответ на GET /questions/<id>.
+    """Вернуть вопрос с вложенной категорией и статусом 200 либо JSON 404.
 
     Args:
-        id: Идентификатор вопроса из URL.
+        question_id: Идентификатор вопроса из URL.
 
-    Returns:
-        Кортеж из JSON-ответа с вопросом и HTTP-статуса 200
-        либо JSON-ответа с ошибкой и статуса 404, если вопрос не найден.
-
-    Raises:
-        ValidationError: Данные вопроса не соответствуют схеме QuestionRead.
+    Данные ORM проверяются схемой QuestionRead перед сериализацией.
     """
     question, error = _get_question_or_404(question_id)
     if error:

@@ -1,3 +1,4 @@
+"""Создавать и читать ответы на вопрос, рассчитывать число голосов и процент согласия."""
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 from sqlalchemy import func
@@ -22,6 +23,14 @@ answers_bp = Blueprint(
 
 @answers_bp.route("/answers", methods=["GET"])
 def get_answers(question_id: int):
+    """Вернуть список ответов на существующий вопрос и статус 200.
+
+    Args:
+        question_id: Идентификатор вопроса из URL.
+
+    При отсутствии вопроса возвращает JSON 404. Список ORM-ответов
+    сериализуется адаптером AnswersList без отдельного validate_python.
+    """
     question, error = _get_object_or_404(Question, question_id)
     if question is None:
         return error
@@ -34,6 +43,17 @@ def get_answers(question_id: int):
 
 @answers_bp.route('/answers', methods=["POST"])
 def create_answer(question_id: int):
+    """Сохранить ответ со строгим булевым полем is_agree.
+
+    Args:
+        question_id: Идентификатор вопроса, к которому относится ответ.
+
+    Returns:
+        JSON ответа и 201; JSON ошибки и 404 при отсутствии вопроса,
+        400 при неразобранном теле или JSON null, 422 при нарушении схемы.
+
+    Строки и числа вместо bool не принимаются. Ошибки БД не перехватываются.
+    """
     question, error = _get_object_or_404(Question, question_id)
     if question is None:
         return error
@@ -55,6 +75,14 @@ def create_answer(question_id: int):
 
 @answers_bp.route('/results', methods=["GET"])
 def get_results(question_id: int):
+    """Вернуть число согласий, несогласий, сумму и процент согласия с кодом 200.
+
+    Args:
+        question_id: Идентификатор вопроса из URL.
+
+    Для вопроса без ответов значения равны нулю. Если вопрос отсутствует,
+    возвращается JSON ошибки и статус 404.
+    """
     question, error = _get_object_or_404(Question, question_id)
     if question is None:
         return error

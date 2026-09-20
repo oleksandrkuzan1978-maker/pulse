@@ -1,8 +1,8 @@
-"""Определить схемы проверки и сериализации вопросов.
+"""Проверять и сериализовать категории, вопросы и результаты голосования.
 
-QuestionText удаляет окружающие пробелы и ограничивает длину текста
-диапазоном от 1 до 255 символов. QuestionsList проверяет и сериализует
-коллекции вопросов с помощью TypeAdapter для списка QuestionRead.
+QCText обрезает окружающие пробелы и допускает 1–255 символов.
+CategoryID требует положительный int без преобразования строк и bool.
+Схема чтения вопроса включает вложенную категорию; адаптеры обслуживают списки.
 """
 
 from typing import Annotated
@@ -22,19 +22,23 @@ CategoryID = Annotated[int, Field(strict=True, gt=0)]
 
 
 class CategoryBase(BaseModel):
+    """Название категории длиной 1–255 символов после удаления пробелов по краям."""
     name: QCText
 
 
 class CategoryCreate(CategoryBase):
+    """Данные создания категории с обязательным name; лишние поля игнорируются."""
     pass
 
 
 class CategoryRead(CategoryBase):
+    """ID и название категории, читаемые в том числе из атрибутов ORM-объекта."""
     model_config = ConfigDict(from_attributes=True)
     id: CategoryID
 
 
 class CategoryUpdate(CategoryBase):
+    """Обязательное новое название категории; дополнительные поля запрещены."""
     model_config = ConfigDict(extra="forbid")
     name: QCText
 
@@ -52,19 +56,22 @@ class QuestionBase(BaseModel):
 
 
 class QuestionCreate(QuestionBase):
-    """Данные создания вопроса с обязательным текстом.
+    """Данные создания вопроса: text и положительный целочисленный category_id.
 
-    Наследует поле text из QuestionBase. Поле категории в схеме не определено.
+    Существование категории проверяет обработчик запроса, а не схема.
     """
     category_id: CategoryID
 
 
 class QuestionRead(QuestionBase):
-    """Представление вопроса для чтения, в том числе из ORM-объекта.
+    """Представление вопроса с вложенной категорией из словаря или ORM-объекта.
 
     Attributes:
         text: Текст вопроса, наследуемый из QuestionBase.
-        id: Целочисленный идентификатор вопроса.
+        id: Идентификатор вопроса.
+        category: Объект категории с её id и name.
+
+    Отдельное поле category_id в ответ не включается.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -73,16 +80,13 @@ class QuestionRead(QuestionBase):
 
 
 class QuestionUpdate(QuestionBase):
-    """Данные изменения вопроса с обязательным текстом.
-
-    Наследует обязательное поле text из QuestionBase. Пустые данные
-    не проходят проверку, в том числе при использовании схемы для PATCH.
-    """
+    """Обязательный непустой text для PUT/PATCH; null и лишние поля запрещены."""
     model_config = ConfigDict(extra="forbid")
     text: QCText
 
 
 class QuestionResult(BaseModel):
+    """Счётчики ответов на вопрос с вычисляемыми total и is_agree_percentage."""
     question_id: int
     agree_count: int
     disagree_count: int
@@ -90,12 +94,14 @@ class QuestionResult(BaseModel):
     @computed_field
     @property
     def total(self) -> int:
+        """Вернуть сумму согласий и несогласий."""
         return self.agree_count + self.disagree_count
 
 
     @computed_field
     @property
     def is_agree_percentage(self) -> float:
+        """Вернуть процент согласий с округлением до сотых; без ответов — 0.0."""
         if not self.total:
             return 0.0
         return round(self.agree_count / self.total * 100, 2)

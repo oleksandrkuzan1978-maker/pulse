@@ -1,3 +1,4 @@
+"""Обработать создание, чтение списка, переименование и удаление категорий."""
 from flask import Blueprint, jsonify, request
 from sqlalchemy import select
 from app.models import Question, Category, db
@@ -9,6 +10,7 @@ categories_bp = Blueprint('categories', __name__, url_prefix='/categories')
 
 
 def _get_category_or_404(category_id: int):
+    """Вернуть (Category, None) либо (None, кортеж JSON-ответа с кодом 404)."""
     category = db.session.get(Category, category_id)
     if category is None:
         return None, (jsonify({"error": f"Category with id={category_id} not found"}), 404,)
@@ -17,6 +19,12 @@ def _get_category_or_404(category_id: int):
 
 @categories_bp.route('', methods=['POST'])
 def create_categories():
+    """Создать одну категорию из обязательного поля name в POST /categories.
+
+    Возвращает JSON категории и 201; неразобранное тело или JSON null — 400,
+    нарушение схемы — 422. Пробелы по краям имени удаляет схема.
+    Уникальность названия не проверяется; ошибки БД не перехватываются.
+    """
     payload = request.get_json(silent=True)
     if payload is None:
         return jsonify({"error": "Invalid or missing JSON body"}), 400
@@ -33,6 +41,7 @@ def create_categories():
 
 @categories_bp.route('', methods=['GET'])
 def get_categories():
+    """Вернуть проверенный JSON-список категорий и 200; при отсутствии данных — []."""
     categories = db.session.scalars(db.select(Category))
     result = CategoriesList.dump_python(CategoriesList.validate_python(categories))
     return jsonify(result), 200
@@ -40,6 +49,16 @@ def get_categories():
 
 @categories_bp.route('/<int:category_id>', methods=['DELETE'])
 def delete_category(category_id: int):
+    """Удалить категорию, её вопросы и ответы через ORM-каскады.
+
+    Args:
+        category_id: Идентификатор удаляемой категории.
+
+    Returns:
+        Пустое тело и 204 либо JSON ошибки и 404, если категории нет.
+
+    Ошибки сохранения в БД не перехватываются.
+    """
     category, error = _get_category_or_404(category_id)
     if error:
         return error
@@ -50,6 +69,17 @@ def delete_category(category_id: int):
 
 @categories_bp.route('/<int:category_id>', methods=['PUT'])
 def update_category(category_id: int):
+    """Переименовать категорию по обязательному полю name в PUT-запросе.
+
+    Args:
+        category_id: Идентификатор изменяемой категории.
+
+    Returns:
+        JSON категории и 200, JSON ошибки и 404 при отсутствии категории,
+        400 при неразобранном теле или null, 422 при нарушении схемы.
+
+    Дополнительные поля запрещены. Ошибки БД не перехватываются.
+    """
     category, error = _get_category_or_404(category_id)
     if error:
         return error
